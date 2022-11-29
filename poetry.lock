@@ -51,6 +51,14 @@ python-versions = ">=3.7"
 colorama = {version = "*", markers = "platform_system == \"Windows\""}
 
 [[package]]
+name = "cloudpickle"
+version = "2.2.0"
+description = "Extended pickling support for Python objects"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[[package]]
 name = "colorama"
 version = "0.4.6"
 description = "Cross-platform colored terminal text."
@@ -86,6 +94,40 @@ python-versions = "*"
 preview = ["glfw-preview"]
 
 [[package]]
+name = "gymnasium"
+version = "0.26.3"
+description = "A standard API for reinforcement learning and a diverse set of reference environments (formerly Gym)"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+cloudpickle = ">=1.2.0"
+gymnasium-notices = ">=0.0.1"
+importlib-metadata = {version = ">=4.8.0", markers = "python_version < \"3.10\""}
+numpy = ">=1.18.0"
+
+[package.extras]
+accept-rom-license = ["autorom[accept-rom-license] (>=0.4.2,<0.5.0)"]
+all = ["pygame (==2.1.0)", "matplotlib (>=3.0)", "ale-py (>=0.8.0,<0.9.0)", "mujoco (==2.2)", "box2d-py (==2.3.5)", "mujoco-py (>=2.1,<2.2)", "pytest (==7.0.1)", "imageio (>=2.14.1)", "gym (==0.26.2)", "moviepy (>=1.0.0)", "opencv-python (>=3.0)", "swig (>=4.0.0,<5.0.0)", "lz4 (>=3.1.0)"]
+atari = ["ale-py (>=0.8.0,<0.9.0)"]
+box2d = ["box2d-py (==2.3.5)", "pygame (==2.1.0)", "swig (>=4.0.0,<5.0.0)"]
+classic_control = ["pygame (==2.1.0)"]
+mujoco = ["mujoco (==2.2)", "imageio (>=2.14.1)"]
+mujoco_py = ["mujoco-py (>=2.1,<2.2)"]
+other = ["lz4 (>=3.1.0)", "opencv-python (>=3.0)", "matplotlib (>=3.0)", "moviepy (>=1.0.0)"]
+testing = ["pygame (==2.1.0)", "matplotlib (>=3.0)", "box2d-py (==2.3.5)", "mujoco (==2.2)", "mujoco-py (>=2.1,<2.2)", "imageio (>=2.14.1)", "moviepy (>=1.0.0)", "opencv-python (>=3.0)", "swig (>=4.0.0,<5.0.0)", "lz4 (>=3.1.0)", "pytest (==7.0.1)", "gym (==0.26.2)"]
+toy_text = ["pygame (==2.1.0)"]
+
+[[package]]
+name = "gymnasium-notices"
+version = "0.0.1"
+description = "Notices for gymnasium"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "imageio"
 version = "2.22.4"
 description = "Library for reading and writing a wide range of image, video, scientific, and volumetric data formats."
@@ -113,6 +155,22 @@ opencv = ["opencv-python"]
 pyav = ["av (!=10.0.0)"]
 test = ["invoke", "pytest", "pytest-cov", "fsspec"]
 tifffile = ["tifffile"]
+
+[[package]]
+name = "importlib-metadata"
+version = "5.1.0"
+description = "Read metadata from Python packages"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.dependencies]
+zipp = ">=0.5"
+
+[package.extras]
+docs = ["sphinx (>=3.5)", "jaraco.packaging (>=9)", "rst.linker (>=1.9)", "furo", "jaraco.tidelift (>=1.4)"]
+perf = ["ipython"]
+testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-cov", "pytest-enabler (>=1.3)", "packaging", "pyfakefs", "flufl.flake8", "pytest-perf (>=0.9.2)", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)", "pytest-flake8", "importlib-resources (>=1.3)"]
 
 [[package]]
 name = "mujoco-py"
@@ -227,10 +285,22 @@ category = "main"
 optional = false
 python-versions = ">=3.7"
 
+[[package]]
+name = "zipp"
+version = "3.11.0"
+description = "Backport of pathlib-compatible object wrapper for zip files"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+
+[package.extras]
+docs = ["sphinx (>=3.5)", "jaraco.packaging (>=9)", "rst.linker (>=1.9)", "furo", "jaraco.tidelift (>=1.4)"]
+testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "flake8 (<5)", "pytest-cov", "pytest-enabler (>=1.3)", "jaraco.itertools", "func-timeout", "jaraco.functools", "more-itertools", "pytest-black (>=0.3.7)", "pytest-mypy (>=0.9.1)", "pytest-flake8"]
+
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "591b46d9826a4c48a11a42d70a657cd5f84e7146d3f0ee687a591d7dc9111956"
+content-hash = "aefb299e049fd06c528172b7ca8db39ba7c9641b367ff7dd4ff660431d5b3a4f"
 
 [metadata.files]
 black = []
@@ -240,11 +310,15 @@ click = [
     {file = "click-8.1.3-py3-none-any.whl", hash = "sha256:bb4d8133cb15a609f44e8213d9b391b0809795062913b383c62be0ee95b1db48"},
     {file = "click-8.1.3.tar.gz", hash = "sha256:7682dc8afb30297001674575ea00d1814d808d6a36af415a82bd481d37ba7b8e"},
 ]
+cloudpickle = []
 colorama = []
 cython = []
 fasteners = []
 glfw = []
+gymnasium = []
+gymnasium-notices = []
 imageio = []
+importlib-metadata = []
 mujoco-py = []
 mypy-extensions = [
     {file = "mypy_extensions-0.4.3-py2.py3-none-any.whl", hash = "sha256:090fedd75945a69ae91ce1303b5824f428daf5a028d2f6ab8a299250a846f15d"},
@@ -265,3 +339,4 @@ tomli = [
 ]
 tqdm = []
 typing-extensions = []
+zipp = []

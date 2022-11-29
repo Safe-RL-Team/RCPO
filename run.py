@@ -1,3 +1,7 @@
+# We'll need to modify the gym env
+# install gym-0.21.0 package
+# cd gym-0.21.0 && pip install -e .
+
 import gym
 
 from stable_baselines3 import PPO
