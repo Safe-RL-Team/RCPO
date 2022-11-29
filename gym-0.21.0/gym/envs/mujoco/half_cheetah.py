@@ -10,14 +10,25 @@ class HalfCheetahEnv(mujoco_env.MujocoEnv, utils.EzPickle):
 
     def step(self, action):
         xposbefore = self.sim.data.qpos[0]
+        # e.g. part of constraint to optimize for
+        xvelbefore = self.sim.data.qvel[0]
         self.do_simulation(action, self.frame_skip)
         xposafter = self.sim.data.qpos[0]
+        # e.g. part of constraint to optimize for
+        xvelafter = self.sim.data.qvel[0]
         ob = self._get_obs()
         reward_ctrl = -0.1 * np.square(action).sum()
         reward_run = (xposafter - xposbefore) / self.dt
         reward = reward_ctrl + reward_run
         done = False
-        return ob, reward, done, dict(reward_run=reward_run, reward_ctrl=reward_ctrl)
+        # e.g. constraint to optimize for
+        vel_change = (xvelafter - xvelbefore) / self.dt
+        return (
+            ob,
+            reward,
+            done,
+            dict(reward_run=reward_run, reward_ctrl=reward_ctrl, vel_change=vel_change),
+        )
 
     def _get_obs(self):
         return np.concatenate(
