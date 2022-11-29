@@ -1,7 +1,3 @@
-# We'll need to modify the gym env
-# install gym-0.21.0 package
-# cd gym-0.21.0 && pip install -e .
-
 import gym
 
 from stable_baselines3 import PPO
@@ -12,6 +8,9 @@ from stable_baselines3 import PPO
 #   1. poetry shell
 #   2. python setup.py install
 #   3. poetry install
+#   We'll need to modify the gym env
+#   install gym-0.21.0 package
+#   4. cd gym-0.21.0 && pip install -e .
 
 # env = gym.make("CartPole-v1")
 env = gym.make("HalfCheetah-v2")
