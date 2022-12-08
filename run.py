@@ -1,6 +1,6 @@
 import gym
 
-from stable_baselines3 import PPO
+from stable_baselines3 import PPO, RCPPO
 
 ### Create python env
 #   0. For mujoco envs, you need to install mujoco (mujoco-py already defined in pyproject.toml)
@@ -15,7 +15,7 @@ from stable_baselines3 import PPO
 # env = gym.make("CartPole-v1")
 env = gym.make("HalfCheetah-v2")
 
-model = PPO("MlpPolicy", env, verbose=1)
+model = RCPPO("MlpPolicy", env, verbose=1)
 model.learn(total_timesteps=10_000)
 
 obs = env.reset()
