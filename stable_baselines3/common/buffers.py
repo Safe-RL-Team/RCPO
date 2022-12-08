@@ -616,6 +616,10 @@ class ConstraintRolloutBuffer(RolloutBuffer):
         # Buffer for constraints
         self.constraints = None
         self.generator_ready = False
+
+        # Lambda for constraint
+        self.constraint_lambda = 0
+
         self.reset()
 
     def reset(self) -> None:
@@ -673,6 +677,7 @@ class ConstraintRolloutBuffer(RolloutBuffer):
                 next_values = self.values[step + 1]
             delta = (
                 self.rewards[step]
+                - self.constraint_lambda * self.constraints[step]
                 + self.gamma * next_values * next_non_terminal
                 - self.values[step]
             )
