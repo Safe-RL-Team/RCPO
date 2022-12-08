@@ -395,6 +395,13 @@ class RewardConstrainedOnPolicyAlgorithm(OnPolicyAlgorithm):
             supported_action_spaces=supported_action_spaces,
         )
 
+        from stable_baselines3.common import vec_env
+
+        if isinstance(env, vec_env.VecEnv):
+            self.done_indices_per_env = [[] for _ in range(env.num_envs)]
+        else:
+            self.done_indices_per_env = [[]]
+
     def _setup_model(self) -> None:
         self._setup_lr_schedule()
         self.set_random_seed(self.seed)
@@ -455,6 +462,7 @@ class RewardConstrainedOnPolicyAlgorithm(OnPolicyAlgorithm):
 
         callback.on_rollout_start()
 
+        self.done_indices_per_env = [[] for _ in range(env.num_envs)]
         while n_steps < n_rollout_steps:
             if (
                 self.use_sde
@@ -522,6 +530,20 @@ class RewardConstrainedOnPolicyAlgorithm(OnPolicyAlgorithm):
             )
             self._last_obs = new_obs
             self._last_episode_starts = dones
+
+            ### Save indices of when the episode ends in terminal state.
+            # One buffer row for an env can contain multiple episodes. We want to know which slices of the buffer
+            # correspond to an episodes that ended in a terminal state.
+            for done_idx, done in enumerate(dones):
+                if done:
+                    if "TimeLimit.truncated" not in infos[done_idx]:
+                        self.done_indices_per_env[done_idx].append(n_steps - 1)
+                    else:
+                        print(
+                            "Time limit excceeded, thus did not end rollout due to terminal state.",
+                            "Encode skipping of episode by adding negative index.",
+                        )
+                        self.done_indices_per_env[done_idx].append(-1 * (n_steps - 1))
 
         with th.no_grad():
             # Compute value for the last timestep
