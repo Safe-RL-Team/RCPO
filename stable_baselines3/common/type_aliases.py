@@ -20,7 +20,9 @@ GymObs = Union[Tuple, Dict[str, Any], np.ndarray, int]
 GymStepReturn = Tuple[GymObs, float, bool, Dict]
 TensorDict = Dict[Union[str, int], th.Tensor]
 OptimizerStateDict = Dict[str, Any]
-MaybeCallback = Union[None, Callable, List[callbacks.BaseCallback], callbacks.BaseCallback]
+MaybeCallback = Union[
+    None, Callable, List[callbacks.BaseCallback], callbacks.BaseCallback
+]
 
 # A schedule takes the remaining progress as input
 # and ouputs a scalar (e.g. learning rate, clip range, ...)
@@ -34,6 +36,16 @@ class RolloutBufferSamples(NamedTuple):
     old_log_prob: th.Tensor
     advantages: th.Tensor
     returns: th.Tensor
+
+
+class ConstraintRolloutBufferSamples(NamedTuple):
+    observations: th.Tensor
+    actions: th.Tensor
+    old_values: th.Tensor
+    old_log_prob: th.Tensor
+    advantages: th.Tensor
+    returns: th.Tensor
+    constraints: th.Tensor
 
 
 class DictRolloutBufferSamples(RolloutBufferSamples):

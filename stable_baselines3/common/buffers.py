@@ -12,6 +12,7 @@ from stable_baselines3.common.type_aliases import (
     DictRolloutBufferSamples,
     ReplayBufferSamples,
     RolloutBufferSamples,
+    ConstraintRolloutBufferSamples,
 )
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
@@ -145,7 +146,9 @@ class BaseBuffer(ABC):
         return obs
 
     @staticmethod
-    def _normalize_reward(reward: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
+    def _normalize_reward(
+        reward: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> np.ndarray:
         if env is not None:
             return env.normalize_reward(reward).astype(np.float32)
         return reward
@@ -181,7 +184,9 @@ class ReplayBuffer(BaseBuffer):
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
     ):
-        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
 
         # Adjust buffer size
         self.buffer_size = max(buffer_size // n_envs, 1)
@@ -199,15 +204,23 @@ class ReplayBuffer(BaseBuffer):
             )
         self.optimize_memory_usage = optimize_memory_usage
 
-        self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=observation_space.dtype)
+        self.observations = np.zeros(
+            (self.buffer_size, self.n_envs) + self.obs_shape,
+            dtype=observation_space.dtype,
+        )
 
         if optimize_memory_usage:
             # `observations` contains also the next observation
             self.next_observations = None
         else:
-            self.next_observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=observation_space.dtype)
+            self.next_observations = np.zeros(
+                (self.buffer_size, self.n_envs) + self.obs_shape,
+                dtype=observation_space.dtype,
+            )
 
-        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype)
+        self.actions = np.zeros(
+            (self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype
+        )
 
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -217,7 +230,12 @@ class ReplayBuffer(BaseBuffer):
         self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
 
         if psutil is not None:
-            total_memory_usage = self.observations.nbytes + self.actions.nbytes + self.rewards.nbytes + self.dones.nbytes
+            total_memory_usage = (
+                self.observations.nbytes
+                + self.actions.nbytes
+                + self.rewards.nbytes
+                + self.dones.nbytes
+            )
 
             if self.next_observations is not None:
                 total_memory_usage += self.next_observations.nbytes
@@ -254,7 +272,9 @@ class ReplayBuffer(BaseBuffer):
         self.observations[self.pos] = np.array(obs).copy()
 
         if self.optimize_memory_usage:
-            self.observations[(self.pos + 1) % self.buffer_size] = np.array(next_obs).copy()
+            self.observations[(self.pos + 1) % self.buffer_size] = np.array(
+                next_obs
+            ).copy()
         else:
             self.next_observations[self.pos] = np.array(next_obs).copy()
 
@@ -263,14 +283,18 @@ class ReplayBuffer(BaseBuffer):
         self.dones[self.pos] = np.array(done).copy()
 
         if self.handle_timeout_termination:
-            self.timeouts[self.pos] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
+            self.timeouts[self.pos] = np.array(
+                [info.get("TimeLimit.truncated", False) for info in infos]
+            )
 
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+    def sample(
+        self, batch_size: int, env: Optional[VecNormalize] = None
+    ) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
@@ -287,19 +311,28 @@ class ReplayBuffer(BaseBuffer):
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (
+                np.random.randint(1, self.buffer_size, size=batch_size) + self.pos
+            ) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos, size=batch_size)
         return self._get_samples(batch_inds, env=env)
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> ReplayBufferSamples:
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
         if self.optimize_memory_usage:
-            next_obs = self._normalize_obs(self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :], env)
+            next_obs = self._normalize_obs(
+                self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :],
+                env,
+            )
         else:
-            next_obs = self._normalize_obs(self.next_observations[batch_inds, env_indices, :], env)
+            next_obs = self._normalize_obs(
+                self.next_observations[batch_inds, env_indices, :], env
+            )
 
         data = (
             self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
@@ -307,8 +340,13 @@ class ReplayBuffer(BaseBuffer):
             next_obs,
             # Only use dones that are not due to timeouts
             # deactivated by default (timeouts is initialized as an array of False)
-            (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
-            self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
+            (
+                self.dones[batch_inds, env_indices]
+                * (1 - self.timeouts[batch_inds, env_indices])
+            ).reshape(-1, 1),
+            self._normalize_reward(
+                self.rewards[batch_inds, env_indices].reshape(-1, 1), env
+            ),
         )
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
 
@@ -347,28 +385,52 @@ class RolloutBuffer(BaseBuffer):
         n_envs: int = 1,
     ):
 
-        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
         self.gae_lambda = gae_lambda
         self.gamma = gamma
-        self.observations, self.actions, self.rewards, self.advantages = None, None, None, None
-        self.returns, self.episode_starts, self.values, self.log_probs = None, None, None, None
+        self.observations, self.actions, self.rewards, self.advantages = (
+            None,
+            None,
+            None,
+            None,
+        )
+        self.returns, self.episode_starts, self.values, self.log_probs = (
+            None,
+            None,
+            None,
+            None,
+        )
+        # Buffer for constraints
+        self.constraints = None
         self.generator_ready = False
         self.reset()
 
     def reset(self) -> None:
 
-        self.observations = np.zeros((self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
+        self.observations = np.zeros(
+            (self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32
+        )
+        self.actions = np.zeros(
+            (self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32
+        )
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.episode_starts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.episode_starts = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.float32
+        )
         self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        # Buffer for constraints
+        self.constraints = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.generator_ready = False
         super().reset()
 
-    def compute_returns_and_advantage(self, last_values: th.Tensor, dones: np.ndarray) -> None:
+    def compute_returns_and_advantage(
+        self, last_values: th.Tensor, dones: np.ndarray
+    ) -> None:
         """
         Post-processing step: compute the lambda-return (TD(lambda) estimate)
         and GAE(lambda) advantage.
@@ -398,8 +460,14 @@ class RolloutBuffer(BaseBuffer):
             else:
                 next_non_terminal = 1.0 - self.episode_starts[step + 1]
                 next_values = self.values[step + 1]
-            delta = self.rewards[step] + self.gamma * next_values * next_non_terminal - self.values[step]
-            last_gae_lam = delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            delta = (
+                self.rewards[step]
+                + self.gamma * next_values * next_non_terminal
+                - self.values[step]
+            )
+            last_gae_lam = (
+                delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            )
             self.advantages[step] = last_gae_lam
         # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
         # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
@@ -413,6 +481,7 @@ class RolloutBuffer(BaseBuffer):
         episode_start: np.ndarray,
         value: th.Tensor,
         log_prob: th.Tensor,
+        constraint: np.ndarray,
     ) -> None:
         """
         :param obs: Observation
@@ -423,6 +492,7 @@ class RolloutBuffer(BaseBuffer):
             following the current policy.
         :param log_prob: log probability of the action
             following the current policy.
+        :param constraint: constraint value
         """
         if len(log_prob.shape) == 0:
             # Reshape 0-d tensor to avoid error
@@ -442,11 +512,14 @@ class RolloutBuffer(BaseBuffer):
         self.episode_starts[self.pos] = np.array(episode_start).copy()
         self.values[self.pos] = value.clone().cpu().numpy().flatten()
         self.log_probs[self.pos] = log_prob.clone().cpu().numpy()
+        self.constraints[self.pos] = np.array(constraint).copy()
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self, batch_size: Optional[int] = None) -> Generator[RolloutBufferSamples, None, None]:
+    def get(
+        self, batch_size: Optional[int] = None
+    ) -> Generator[RolloutBufferSamples, None, None]:
         assert self.full, ""
         indices = np.random.permutation(self.buffer_size * self.n_envs)
         # Prepare the data
@@ -474,7 +547,9 @@ class RolloutBuffer(BaseBuffer):
             yield self._get_samples(indices[start_idx : start_idx + batch_size])
             start_idx += batch_size
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> RolloutBufferSamples:
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> RolloutBufferSamples:
         data = (
             self.observations[batch_inds],
             self.actions[batch_inds],
@@ -482,8 +557,220 @@ class RolloutBuffer(BaseBuffer):
             self.log_probs[batch_inds].flatten(),
             self.advantages[batch_inds].flatten(),
             self.returns[batch_inds].flatten(),
+            self.constraints[batch_inds],
         )
         return RolloutBufferSamples(*tuple(map(self.to_torch, data)))
+
+
+class ConstraintRolloutBuffer(RolloutBuffer):
+    """
+    Rollout buffer used in on-policy algorithms like A2C/PPO.
+    It corresponds to ``buffer_size`` transitions collected
+    using the current policy.
+    This experience will be discarded after the policy update.
+    In order to use PPO objective, we also store the current value of each state
+    and the log probability of each taken action.
+
+    The term rollout here refers to the model-free notion and should not
+    be used with the concept of rollout used in model-based RL or planning.
+    Hence, it is only involved in policy and value function training but not action selection.
+
+    :param buffer_size: Max number of element in the buffer
+    :param observation_space: Observation space
+    :param action_space: Action space
+    :param device: PyTorch device
+    :param gae_lambda: Factor for trade-off of bias vs variance for Generalized Advantage Estimator
+        Equivalent to classic advantage when set to 1.
+    :param gamma: Discount factor
+    :param n_envs: Number of parallel environments
+    """
+
+    def __init__(
+        self,
+        buffer_size: int,
+        observation_space: spaces.Space,
+        action_space: spaces.Space,
+        device: Union[th.device, str] = "auto",
+        gae_lambda: float = 1,
+        gamma: float = 0.99,
+        n_envs: int = 1,
+    ):
+
+        super().__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
+        self.gae_lambda = gae_lambda
+        self.gamma = gamma
+        self.observations, self.actions, self.rewards, self.advantages = (
+            None,
+            None,
+            None,
+            None,
+        )
+        self.returns, self.episode_starts, self.values, self.log_probs = (
+            None,
+            None,
+            None,
+            None,
+        )
+        # Buffer for constraints
+        self.constraints = None
+        self.generator_ready = False
+        self.reset()
+
+    def reset(self) -> None:
+
+        self.observations = np.zeros(
+            (self.buffer_size, self.n_envs) + self.obs_shape, dtype=np.float32
+        )
+        self.actions = np.zeros(
+            (self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32
+        )
+        self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.episode_starts = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.float32
+        )
+        self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        # Buffer for constraints
+        self.constraints = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.generator_ready = False
+        super().reset()
+
+    def compute_returns_and_advantage(
+        self, last_values: th.Tensor, dones: np.ndarray
+    ) -> None:
+        """
+        Post-processing step: compute the lambda-return (TD(lambda) estimate)
+        and GAE(lambda) advantage.
+
+        Uses Generalized Advantage Estimation (https://arxiv.org/abs/1506.02438)
+        to compute the advantage. To obtain Monte-Carlo advantage estimate (A(s) = R - V(S))
+        where R is the sum of discounted reward with value bootstrap
+        (because we don't always have full episode), set ``gae_lambda=1.0`` during initialization.
+
+        The TD(lambda) estimator has also two special cases:
+        - TD(1) is Monte-Carlo estimate (sum of discounted rewards)
+        - TD(0) is one-step estimate with bootstrapping (r_t + gamma * v(s_{t+1}))
+
+        For more information, see discussion in https://github.com/DLR-RM/stable-baselines3/pull/375.
+
+        :param last_values: state value estimation for the last step (one for each env)
+        :param dones: if the last step was a terminal step (one bool for each env).
+        """
+        # Convert to numpy
+        last_values = last_values.clone().cpu().numpy().flatten()
+
+        last_gae_lam = 0
+        for step in reversed(range(self.buffer_size)):
+            if step == self.buffer_size - 1:
+                next_non_terminal = 1.0 - dones
+                next_values = last_values
+            else:
+                next_non_terminal = 1.0 - self.episode_starts[step + 1]
+                next_values = self.values[step + 1]
+            delta = (
+                self.rewards[step]
+                + self.gamma * next_values * next_non_terminal
+                - self.values[step]
+            )
+            last_gae_lam = (
+                delta + self.gamma * self.gae_lambda * next_non_terminal * last_gae_lam
+            )
+            self.advantages[step] = last_gae_lam
+        # TD(lambda) estimator, see Github PR #375 or "Telescoping in TD(lambda)"
+        # in David Silver Lecture 4: https://www.youtube.com/watch?v=PnHCvfgC_ZA
+        self.returns = self.advantages + self.values
+
+    def add(
+        self,
+        obs: np.ndarray,
+        action: np.ndarray,
+        reward: np.ndarray,
+        episode_start: np.ndarray,
+        value: th.Tensor,
+        log_prob: th.Tensor,
+        constraint: np.ndarray,
+    ) -> None:
+        """
+        :param obs: Observation
+        :param action: Action
+        :param reward:
+        :param episode_start: Start of episode signal.
+        :param value: estimated value of the current state
+            following the current policy.
+        :param log_prob: log probability of the action
+            following the current policy.
+        :param constraint: constraint value
+        """
+        if len(log_prob.shape) == 0:
+            # Reshape 0-d tensor to avoid error
+            log_prob = log_prob.reshape(-1, 1)
+
+        # Reshape needed when using multiple envs with discrete observations
+        # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
+        if isinstance(self.observation_space, spaces.Discrete):
+            obs = obs.reshape((self.n_envs,) + self.obs_shape)
+
+        # Same reshape, for actions
+        action = action.reshape((self.n_envs, self.action_dim))
+
+        self.observations[self.pos] = np.array(obs).copy()
+        self.actions[self.pos] = np.array(action).copy()
+        self.rewards[self.pos] = np.array(reward).copy()
+        self.episode_starts[self.pos] = np.array(episode_start).copy()
+        self.values[self.pos] = value.clone().cpu().numpy().flatten()
+        self.log_probs[self.pos] = log_prob.clone().cpu().numpy()
+        self.constraints[self.pos] = np.array(constraint).copy()
+        self.pos += 1
+        if self.pos == self.buffer_size:
+            self.full = True
+
+    def get(
+        self, batch_size: Optional[int] = None
+    ) -> Generator[RolloutBufferSamples, None, None]:
+        assert self.full, ""
+        indices = np.random.permutation(self.buffer_size * self.n_envs)
+        # Prepare the data
+        if not self.generator_ready:
+
+            _tensor_names = [
+                "observations",
+                "actions",
+                "values",
+                "log_probs",
+                "advantages",
+                "returns",
+            ]
+
+            for tensor in _tensor_names:
+                self.__dict__[tensor] = self.swap_and_flatten(self.__dict__[tensor])
+            self.generator_ready = True
+
+        # Return everything, don't create minibatches
+        if batch_size is None:
+            batch_size = self.buffer_size * self.n_envs
+
+        start_idx = 0
+        while start_idx < self.buffer_size * self.n_envs:
+            yield self._get_samples(indices[start_idx : start_idx + batch_size])
+            start_idx += batch_size
+
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> ConstraintRolloutBufferSamples:
+        data = (
+            self.observations[batch_inds],
+            self.actions[batch_inds],
+            self.values[batch_inds].flatten(),
+            self.log_probs[batch_inds].flatten(),
+            self.advantages[batch_inds].flatten(),
+            self.returns[batch_inds].flatten(),
+            self.constraints[batch_inds].flatten(),
+        )
+        return ConstraintRolloutBufferSamples(*tuple(map(self.to_torch, data)))
 
 
 class DictReplayBuffer(ReplayBuffer):
@@ -513,30 +800,44 @@ class DictReplayBuffer(ReplayBuffer):
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
     ):
-        super(ReplayBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super(ReplayBuffer, self).__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
 
-        assert isinstance(self.obs_shape, dict), "DictReplayBuffer must be used with Dict obs space only"
+        assert isinstance(
+            self.obs_shape, dict
+        ), "DictReplayBuffer must be used with Dict obs space only"
         self.buffer_size = max(buffer_size // n_envs, 1)
 
         # Check that the replay buffer can fit into the memory
         if psutil is not None:
             mem_available = psutil.virtual_memory().available
 
-        assert optimize_memory_usage is False, "DictReplayBuffer does not support optimize_memory_usage"
+        assert (
+            optimize_memory_usage is False
+        ), "DictReplayBuffer does not support optimize_memory_usage"
         # disabling as this adds quite a bit of complexity
         # https://github.com/DLR-RM/stable-baselines3/pull/243#discussion_r531535702
         self.optimize_memory_usage = optimize_memory_usage
 
         self.observations = {
-            key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
+            key: np.zeros(
+                (self.buffer_size, self.n_envs) + _obs_shape,
+                dtype=observation_space[key].dtype,
+            )
             for key, _obs_shape in self.obs_shape.items()
         }
         self.next_observations = {
-            key: np.zeros((self.buffer_size, self.n_envs) + _obs_shape, dtype=observation_space[key].dtype)
+            key: np.zeros(
+                (self.buffer_size, self.n_envs) + _obs_shape,
+                dtype=observation_space[key].dtype,
+            )
             for key, _obs_shape in self.obs_shape.items()
         }
 
-        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype)
+        self.actions = np.zeros(
+            (self.buffer_size, self.n_envs, self.action_dim), dtype=action_space.dtype
+        )
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.dones = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
 
@@ -550,7 +851,12 @@ class DictReplayBuffer(ReplayBuffer):
             for _, obs in self.observations.items():
                 obs_nbytes += obs.nbytes
 
-            total_memory_usage = obs_nbytes + self.actions.nbytes + self.rewards.nbytes + self.dones.nbytes
+            total_memory_usage = (
+                obs_nbytes
+                + self.actions.nbytes
+                + self.rewards.nbytes
+                + self.dones.nbytes
+            )
             if self.next_observations is not None:
                 next_obs_nbytes = 0
                 for _, obs in self.observations.items():
@@ -585,7 +891,9 @@ class DictReplayBuffer(ReplayBuffer):
 
         for key in self.next_observations.keys():
             if isinstance(self.observation_space.spaces[key], spaces.Discrete):
-                next_obs[key] = next_obs[key].reshape((self.n_envs,) + self.obs_shape[key])
+                next_obs[key] = next_obs[key].reshape(
+                    (self.n_envs,) + self.obs_shape[key]
+                )
             self.next_observations[key][self.pos] = np.array(next_obs[key]).copy()
 
         # Same reshape, for actions
@@ -596,14 +904,18 @@ class DictReplayBuffer(ReplayBuffer):
         self.dones[self.pos] = np.array(done).copy()
 
         if self.handle_timeout_termination:
-            self.timeouts[self.pos] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
+            self.timeouts[self.pos] = np.array(
+                [info.get("TimeLimit.truncated", False) for info in infos]
+            )
 
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None) -> DictReplayBufferSamples:
+    def sample(
+        self, batch_size: int, env: Optional[VecNormalize] = None
+    ) -> DictReplayBufferSamples:
         """
         Sample elements from the replay buffer.
 
@@ -614,14 +926,26 @@ class DictReplayBuffer(ReplayBuffer):
         """
         return super(ReplayBuffer, self).sample(batch_size=batch_size, env=env)
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> DictReplayBufferSamples:
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> DictReplayBufferSamples:
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
         # Normalize if needed and remove extra dimension (we are using only one env for now)
-        obs_ = self._normalize_obs({key: obs[batch_inds, env_indices, :] for key, obs in self.observations.items()}, env)
+        obs_ = self._normalize_obs(
+            {
+                key: obs[batch_inds, env_indices, :]
+                for key, obs in self.observations.items()
+            },
+            env,
+        )
         next_obs_ = self._normalize_obs(
-            {key: obs[batch_inds, env_indices, :] for key, obs in self.next_observations.items()}, env
+            {
+                key: obs[batch_inds, env_indices, :]
+                for key, obs in self.next_observations.items()
+            },
+            env,
         )
 
         # Convert to torch tensor
@@ -634,10 +958,15 @@ class DictReplayBuffer(ReplayBuffer):
             next_observations=next_observations,
             # Only use dones that are not due to timeouts
             # deactivated by default (timeouts is initialized as an array of False)
-            dones=self.to_torch(self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(
-                -1, 1
+            dones=self.to_torch(
+                self.dones[batch_inds, env_indices]
+                * (1 - self.timeouts[batch_inds, env_indices])
+            ).reshape(-1, 1),
+            rewards=self.to_torch(
+                self._normalize_reward(
+                    self.rewards[batch_inds, env_indices].reshape(-1, 1), env
+                )
             ),
-            rewards=self.to_torch(self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env)),
         )
 
 
@@ -677,26 +1006,48 @@ class DictRolloutBuffer(RolloutBuffer):
         n_envs: int = 1,
     ):
 
-        super(RolloutBuffer, self).__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super(RolloutBuffer, self).__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
 
-        assert isinstance(self.obs_shape, dict), "DictRolloutBuffer must be used with Dict obs space only"
+        assert isinstance(
+            self.obs_shape, dict
+        ), "DictRolloutBuffer must be used with Dict obs space only"
 
         self.gae_lambda = gae_lambda
         self.gamma = gamma
-        self.observations, self.actions, self.rewards, self.advantages = None, None, None, None
-        self.returns, self.episode_starts, self.values, self.log_probs = None, None, None, None
+        self.observations, self.actions, self.rewards, self.advantages = (
+            None,
+            None,
+            None,
+            None,
+        )
+        self.returns, self.episode_starts, self.values, self.log_probs = (
+            None,
+            None,
+            None,
+            None,
+        )
         self.generator_ready = False
         self.reset()
 
     def reset(self) -> None:
-        assert isinstance(self.obs_shape, dict), "DictRolloutBuffer must be used with Dict obs space only"
+        assert isinstance(
+            self.obs_shape, dict
+        ), "DictRolloutBuffer must be used with Dict obs space only"
         self.observations = {}
         for key, obs_input_shape in self.obs_shape.items():
-            self.observations[key] = np.zeros((self.buffer_size, self.n_envs) + obs_input_shape, dtype=np.float32)
-        self.actions = np.zeros((self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32)
+            self.observations[key] = np.zeros(
+                (self.buffer_size, self.n_envs) + obs_input_shape, dtype=np.float32
+            )
+        self.actions = np.zeros(
+            (self.buffer_size, self.n_envs, self.action_dim), dtype=np.float32
+        )
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.returns = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
-        self.episode_starts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.episode_starts = np.zeros(
+            (self.buffer_size, self.n_envs), dtype=np.float32
+        )
         self.values = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.log_probs = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
         self.advantages = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -743,7 +1094,9 @@ class DictRolloutBuffer(RolloutBuffer):
         if self.pos == self.buffer_size:
             self.full = True
 
-    def get(self, batch_size: Optional[int] = None) -> Generator[DictRolloutBufferSamples, None, None]:
+    def get(
+        self, batch_size: Optional[int] = None
+    ) -> Generator[DictRolloutBufferSamples, None, None]:
         assert self.full, ""
         indices = np.random.permutation(self.buffer_size * self.n_envs)
         # Prepare the data
@@ -767,10 +1120,15 @@ class DictRolloutBuffer(RolloutBuffer):
             yield self._get_samples(indices[start_idx : start_idx + batch_size])
             start_idx += batch_size
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> DictRolloutBufferSamples:
+    def _get_samples(
+        self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> DictRolloutBufferSamples:
 
         return DictRolloutBufferSamples(
-            observations={key: self.to_torch(obs[batch_inds]) for (key, obs) in self.observations.items()},
+            observations={
+                key: self.to_torch(obs[batch_inds])
+                for (key, obs) in self.observations.items()
+            },
             actions=self.to_torch(self.actions[batch_inds]),
             old_values=self.to_torch(self.values[batch_inds].flatten()),
             old_log_prob=self.to_torch(self.log_probs[batch_inds].flatten()),
