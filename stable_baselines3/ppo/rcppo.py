@@ -88,6 +88,8 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         batch_size: int = 64,
         n_epochs: int = 10,
         gamma: float = 0.99,
+        constraint_alpha=None,
+        lr_constraint_lambda: float = 5e-7,
         gae_lambda: float = 0.95,
         clip_range: Union[float, Schedule] = 0.2,
         clip_range_vf: Union[None, float, Schedule] = None,
@@ -163,6 +165,11 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         self.clip_range_vf = clip_range_vf
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
+
+        # Upper bound for constraint
+        assert constraint_alpha is not None, "constraint_alpha must be specified"
+        self.constraint_alpha = constraint_alpha
+        self.lr_constraint_lambda = lr_constraint_lambda
 
         if _init_setup_model:
             self._setup_model()
@@ -301,6 +308,73 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
             if not continue_training:
                 break
 
+        # =========================================================================================== #
+        # ============================== Constraint lambda Optimization ============================= #
+        # =========================================================================================== #
+
+        ### If state terminal state compute gradient of constraint lambda in rollout buffer
+        d_constraint_lambda = 0
+        # For each env that is done compute aggragate constraint value for the respective env,
+        # potentially across multiple episodes
+        C_per_env = []
+        for env_idx, env in enumerate(self.done_indices_per_env):
+            start_idx = 0
+            C_for_this_env = []
+            for episode_end_idx in env:
+                # Aggregated constraint values for this episode
+                # Aggregation method chosen here is average
+
+                # If episode_end_idx is negative, then the episode ended due to time limit exceeded
+                # and not due to terminal state. In this case, we do not want to include this episode
+                # and skip forward to the next beginning of ne next episode
+                if episode_end_idx < 0:
+                    print(
+                        "Skipping constraints of this episode due to time limit exceeded done and not terminal state done."
+                    )
+                    start_idx = abs(episode_end_idx) + 1
+                    continue
+
+                constraints_for_this_episode = []
+                constraints_for_this_episode = self.rollout_buffer.constraints[
+                    start_idx : episode_end_idx + 1
+                ][:, env_idx]
+                if len(constraints_for_this_episode) == 0:
+                    print(start_idx, constraints_for_this_episode)
+                C_aggregated = np.mean(constraints_for_this_episode)
+                start_idx = episode_end_idx + 1
+
+                # Add to total constraint value for this env
+                C_for_this_env.append(C_aggregated)
+
+            # Compute average constraint value across all episodes for this env
+            C_per_env.append(np.mean(C_for_this_env))
+
+        # Compute average across all those aggragate constraint values (again, only for envs that are done)
+        C = np.mean(C_per_env)
+
+        # Compute gradient of constraint lambda with respect to the aggragate constraint value
+        # d_constraint_lambda = -(C - alpha)
+        print(
+            f"Average Constraint value vs. constraint upper bound: {C} --- {self.constraint_alpha}"
+        )
+        # d_constraint_lambda = -(C - self.constraint_alpha)
+        d_constraint_lambda = C - self.constraint_alpha
+
+        # update constraint lambda in rollout buffer
+        # self.rollout_buffer.constraint_lambda += lr_constraint_lambda * d_constraint_lambda
+        self.rollout_buffer.constraint_lambda += (
+            self.lr_constraint_lambda * d_constraint_lambda
+        )
+
+        # project constraint lambda to be non-negative
+        # self.rollout_buffer.constraint_lambda = np.maximum(self.rollout_buffer.constraint_lambda, 0)
+        self.rollout_buffer.constraint_lambda = np.maximum(
+            self.rollout_buffer.constraint_lambda, 0
+        )
+
+        # =========================================================================================== #
+        # =========================================================================================== #
+
         self._n_updates += self.n_epochs
         explained_var = explained_variance(
             self.rollout_buffer.values.flatten(), self.rollout_buffer.returns.flatten()
@@ -321,6 +395,9 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         self.logger.record("train/clip_range", clip_range)
         if self.clip_range_vf is not None:
             self.logger.record("train/clip_range_vf", clip_range_vf)
+        self.logger.record(
+            "train/constraint_lambda", self.rollout_buffer.constraint_lambda
+        )
 
     def learn(
         self: SelfRCPPO,
