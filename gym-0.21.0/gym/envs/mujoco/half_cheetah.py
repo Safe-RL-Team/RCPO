@@ -22,12 +22,12 @@ class HalfCheetahEnv(mujoco_env.MujocoEnv, utils.EzPickle):
         reward = reward_ctrl + reward_run
         done = False
         # e.g. constraint to optimize for
-        vel_change = (xvelafter - xvelbefore) / self.dt
+        vel_change = abs(xvelafter - xvelbefore)  # / self.dt
         return (
             ob,
             reward,
             done,
-            dict(reward_run=reward_run, reward_ctrl=reward_ctrl, vel_change=vel_change),
+            dict(reward_run=reward_run, reward_ctrl=reward_ctrl, constraint=vel_change),
         )
 
     def _get_obs(self):
