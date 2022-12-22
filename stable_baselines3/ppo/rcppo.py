@@ -170,6 +170,7 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         self.normalize_advantage = normalize_advantage
         self.target_kl = target_kl
 
+        self.C = 0
         # Upper bound for constraint
         assert constraint_alpha is not None, "constraint_alpha must be specified"
         self.constraint_alpha = constraint_alpha
