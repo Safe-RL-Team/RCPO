@@ -33,6 +33,8 @@ keys/
 .idea
 
 logs/
+wandb/
+tensorboard/
 
 .ipynb_checkpoints
 ghostdriver.log

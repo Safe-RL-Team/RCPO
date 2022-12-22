@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Type, TypeVar, Union
 
 import numpy as np
 import torch as th
+import wandb
 from gym import spaces
 from torch.nn import functional as F
 
@@ -89,7 +90,10 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         n_epochs: int = 10,
         gamma: float = 0.99,
         constraint_alpha=None,
+        constant_constraint_lambda=None,
         lr_constraint_lambda: float = 5e-7,
+        lr_constraint_lambda_decay: float = 0.8,
+        lr_constraint_lambda_decay_threshold: float = 0.2,
         gae_lambda: float = 0.95,
         clip_range: Union[float, Schedule] = 0.2,
         clip_range_vf: Union[None, float, Schedule] = None,
@@ -169,10 +173,46 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         # Upper bound for constraint
         assert constraint_alpha is not None, "constraint_alpha must be specified"
         self.constraint_alpha = constraint_alpha
+        # assert (
+        #     lr_constraint_lambda < learning_rate
+        # ), "lr_constraint_lambda must be less than learning_rate"
         self.lr_constraint_lambda = lr_constraint_lambda
+        self.lr_constraint_lambda_decay = lr_constraint_lambda_decay
+        self.lr_constraint_lambda_decay_threshold = lr_constraint_lambda_decay_threshold
+        self.constant_constraint_lambda = constant_constraint_lambda
 
         if _init_setup_model:
             self._setup_model()
+
+        logger_config = {
+            "learning_rate": learning_rate,
+            "n_steps": n_steps,
+            "batch_size": batch_size,
+            "n_epochs": n_epochs,
+            "gamma": gamma,
+            "gae_lambda": gae_lambda,
+            "ent_coef": ent_coef,
+            "vf_coef": vf_coef,
+            "max_grad_norm": max_grad_norm,
+            "use_sde": use_sde,
+            "sde_sample_freq": sde_sample_freq,
+            "clip_range": clip_range,
+            "clip_range_vf": clip_range_vf,
+            "normalize_advantage": normalize_advantage,
+            "target_kl": target_kl,
+            "constraint_alpha": constraint_alpha,
+            "lr_constraint_lambda": lr_constraint_lambda,
+            "constant_constraint_lambda": constant_constraint_lambda,
+        }
+
+        wandb.init(
+            project="SafeRL",
+            entity=None,
+            sync_tensorboard=True,
+            monitor_gym=True,
+            save_code=True,
+            config=logger_config,
+        )
 
     def _setup_model(self) -> None:
         super()._setup_model()
@@ -340,37 +380,58 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
                 ][:, env_idx]
                 if len(constraints_for_this_episode) == 0:
                     print(start_idx, constraints_for_this_episode)
+
                 C_aggregated = np.mean(constraints_for_this_episode)
                 start_idx = episode_end_idx + 1
 
                 # Add to total constraint value for this env
                 C_for_this_env.append(C_aggregated)
 
+            if not C_for_this_env:
+                print(f"No terminal state reached for env {env_idx}. Skipping...")
+                continue
+
             # Compute average constraint value across all episodes for this env
             C_per_env.append(np.mean(C_for_this_env))
 
-        # Compute average across all those aggragate constraint values (again, only for envs that are done)
-        C = np.mean(C_per_env)
+        # If there are any envs that have reached a terminal state
+        if C_per_env:
+            # Compute average across all those aggragate constraint values (again, only for envs that are done)
+            self.C = np.mean(C_per_env)
 
-        # Compute gradient of constraint lambda with respect to the aggragate constraint value
-        # d_constraint_lambda = -(C - alpha)
-        print(
-            f"Average Constraint value vs. constraint upper bound: {C} --- {self.constraint_alpha}"
-        )
-        # d_constraint_lambda = -(C - self.constraint_alpha)
-        d_constraint_lambda = C - self.constraint_alpha
+            # Compute gradient of constraint lambda with respect to the aggragate constraint value
+            # d_constraint_lambda = -(C - alpha)
+            print(
+                f"Average Constraint value vs. constraint upper bound: {self.C} --- {self.constraint_alpha}"
+            )
+            # d_constraint_lambda = -(C - self.constraint_alpha)
+            d_constraint_lambda = self.C - self.constraint_alpha
 
-        # update constraint lambda in rollout buffer
-        # self.rollout_buffer.constraint_lambda += lr_constraint_lambda * d_constraint_lambda
-        self.rollout_buffer.constraint_lambda += (
-            self.lr_constraint_lambda * d_constraint_lambda
-        )
+            # lr_constraint_lambda decay when constraint is close to constraint_alpha
+            if np.abs(d_constraint_lambda) < self.lr_constraint_lambda_decay_threshold:
+                self.lr_constraint_lambda *= self.lr_constraint_lambda_decay
+                self.lr_constraint_lambda_decay_threshold *= (
+                    self.lr_constraint_lambda_decay
+                )
+                print(f"lr_constraint_lambda decayed to {self.lr_constraint_lambda}")
 
-        # project constraint lambda to be non-negative
-        # self.rollout_buffer.constraint_lambda = np.maximum(self.rollout_buffer.constraint_lambda, 0)
-        self.rollout_buffer.constraint_lambda = np.maximum(
-            self.rollout_buffer.constraint_lambda, 0
-        )
+            # update constraint lambda in rollout buffer
+            # self.rollout_buffer.constraint_lambda += lr_constraint_lambda * d_constraint_lambda
+            self.rollout_buffer.constraint_lambda += (
+                self.lr_constraint_lambda * d_constraint_lambda
+            )
+
+            # project constraint lambda to be non-negative
+            # self.rollout_buffer.constraint_lambda = np.maximum(self.rollout_buffer.constraint_lambda, 0)
+            self.rollout_buffer.constraint_lambda = np.maximum(
+                self.rollout_buffer.constraint_lambda, 0
+            )
+
+        else:
+            print("No terminal state reached for any env. Skipping...")
+
+        if self.constant_constraint_lambda:
+            self.rollout_buffer.constraint_lambda = self.constant_constraint_lambda
 
         # =========================================================================================== #
         # =========================================================================================== #
@@ -398,6 +459,8 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         self.logger.record(
             "train/constraint_lambda", self.rollout_buffer.constraint_lambda
         )
+        self.logger.record("train/constraint_avg", self.C)
+        self.logger.record("train/lr_constraint_lambda", self.lr_constraint_lambda)
 
     def learn(
         self: SelfRCPPO,
