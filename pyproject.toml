@@ -11,6 +11,8 @@ tqdm = "^4.64.1"
 pyglet = "1.5.27"
 Box2D = "^2.3.10"
 mujoco-py = "<2.2,>=2.1"
+wandb = "^0.13.7"
+tensorboard = "^2.11.0"
 
 [tool.poetry.dev-dependencies]
 

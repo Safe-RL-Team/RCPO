@@ -53,6 +53,7 @@ class HalfCheetahEnv(mujoco_env.MujocoEnv, utils.EzPickle):
             "x_velocity": x_velocity,
             "reward_run": forward_reward,
             "reward_ctrl": -ctrl_cost,
+            "constraint": np.average(np.abs(action)),
         }
 
         return observation, reward, done, info

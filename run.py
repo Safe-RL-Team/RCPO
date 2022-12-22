@@ -1,4 +1,6 @@
+from collections import OrderedDict
 import gym
+import torch
 
 from stable_baselines3 import PPO, RCPPO
 
@@ -16,28 +18,63 @@ from stable_baselines3 import PPO, RCPPO
 def main():
     ### Example for cartpole env
     #   constraint is position of cartpole has to be to the left of the upper bound alpha
-    env = gym.make("CartPole-v1")
+    # env = gym.make("CartPole-v1")
+
+    # model = RCPPO(
+    #     "MlpPolicy",
+    #     env,
+    #     verbose=1,
+    #     constraint_alpha=-2,
+    #     lr_constraint_lambda_decay_threshold=0.3,
+    #     constant_constraint_lambda=None,
+    #     lr_constraint_lambda=0.02,
+    #     learning_rate=0.03,
+    #     tensorboard_log="/home/tuananhroman/tu/stable-baselines3/tensorboard",
+    # )
+
+    ### Example for halfcheetah env
+    env = gym.make("HalfCheetah-v3")
+
+    ppo_params = OrderedDict(
+        [
+            ("batch_size", 64),
+            ("clip_range", 0.1),
+            ("ent_coef", 0.000401762),
+            ("gae_lambda", 0.92),
+            ("gamma", 0.98),
+            ("learning_rate", 2.0633e-05),
+            ("max_grad_norm", 0.8),
+            ("n_epochs", 20),
+            ("n_steps", 512),
+            ("policy", "MlpPolicy"),
+            (
+                "policy_kwargs",
+                dict(
+                    log_std_init=-2,
+                    ortho_init=False,
+                    activation_fn=torch.nn.ReLU,
+                    net_arch=[dict(pi=[256, 256], vf=[256, 256])],
+                ),
+            ),
+            ("vf_coef", 0.58096),
+        ]
+    )
 
     model = RCPPO(
-        "MlpPolicy",
-        env,
+        env=env,
         verbose=1,
-        constraint_alpha=-2,
+        constraint_alpha=2,
         lr_constraint_lambda_decay_threshold=0.3,
         constant_constraint_lambda=None,
         lr_constraint_lambda=0.02,
-        learning_rate=0.03,
-        tensorboard_log="/Users/borismeinardus/personal_projects/safeRL/stable-baselines3/tensorboard",
+        tensorboard_log="/home/tuananhroman/tu/stable-baselines3/tensorboard",
+        **ppo_params,
     )
 
-    ### Example for halfcheetah env
-    # env = gym.make("HalfCheetah-v2")
-    # model = RCPPO("MlpPolicy", env, verbose=1, constraint_alpha=1, lr_constraint_lambda=0.1)
-
-    model.learn(total_timesteps=300_000)
+    model.learn(total_timesteps=1_000_000)
 
     obs = env.reset()
-    for _ in range(1000):
+    for _ in range(5000):
         action, _states = model.predict(obs, deterministic=True)
         obs, reward, done, info = env.step(action)
         env.render()
