@@ -1,8 +1,7 @@
-from collections import OrderedDict
 import gym
-import torch
 
 from stable_baselines3 import PPO, RCPPO
+from hyperparameters import half_cheetah_params
 
 ### Create python env
 #   0. For mujoco envs, you need to install mujoco (mujoco-py already defined in pyproject.toml)
@@ -35,31 +34,6 @@ def main():
     ### Example for halfcheetah env
     env = gym.make("HalfCheetah-v3")
 
-    ppo_params = OrderedDict(
-        [
-            ("batch_size", 64),
-            ("clip_range", 0.1),
-            ("ent_coef", 0.000401762),
-            ("gae_lambda", 0.92),
-            ("gamma", 0.98),
-            ("learning_rate", 2.0633e-05),
-            ("max_grad_norm", 0.8),
-            ("n_epochs", 20),
-            ("n_steps", 512),
-            ("policy", "MlpPolicy"),
-            (
-                "policy_kwargs",
-                dict(
-                    log_std_init=-2,
-                    ortho_init=False,
-                    activation_fn=torch.nn.ReLU,
-                    net_arch=[dict(pi=[256, 256], vf=[256, 256])],
-                ),
-            ),
-            ("vf_coef", 0.58096),
-        ]
-    )
-
     model = RCPPO(
         env=env,
         verbose=1,
@@ -68,7 +42,7 @@ def main():
         constant_constraint_lambda=None,
         lr_constraint_lambda=0.02,
         tensorboard_log="/home/tuananhroman/tu/stable-baselines3/tensorboard",
-        **ppo_params,
+        **half_cheetah_params,
     )
 
     model.learn(total_timesteps=1_000_000)
