@@ -536,14 +536,16 @@ class RewardConstrainedOnPolicyAlgorithm(OnPolicyAlgorithm):
             # correspond to an episodes that ended in a terminal state.
             for done_idx, done in enumerate(dones):
                 if done:
-                    if "TimeLimit.truncated" not in infos[done_idx]:
-                        self.done_indices_per_env[done_idx].append(n_steps - 1)
-                    else:
-                        print(
-                            "Time limit excceeded, thus did not end rollout due to terminal state.",
-                            "Encode skipping of episode by adding negative index.",
-                        )
-                        self.done_indices_per_env[done_idx].append(-1 * (n_steps - 1))
+                    # Time Limit exceeded is acepted as terminal state.
+                    self.done_indices_per_env[done_idx].append(n_steps - 1)
+                    # if "TimeLimit.truncated" not in infos[done_idx]:
+                    #     self.done_indices_per_env[done_idx].append(n_steps - 1)
+                    # else:
+                    #     print(
+                    #         "Time limit excceeded, thus did not end rollout due to terminal state.",
+                    #         "Encode skipping of episode by adding negative index.",
+                    #     )
+                    #     self.done_indices_per_env[done_idx].append(-1 * (n_steps - 1))
 
         with th.no_grad():
             # Compute value for the last timestep

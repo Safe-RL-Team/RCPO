@@ -105,12 +105,44 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
         tensorboard_log: Optional[str] = None,
+        use_wandb: bool = True,
         policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
         seed: Optional[int] = None,
         device: Union[th.device, str] = "auto",
         _init_setup_model: bool = True,
     ):
+
+        if use_wandb:
+            logger_config = {
+                "learning_rate": learning_rate,
+                "n_steps": n_steps,
+                "batch_size": batch_size,
+                "n_epochs": n_epochs,
+                "gamma": gamma,
+                "gae_lambda": gae_lambda,
+                "ent_coef": ent_coef,
+                "vf_coef": vf_coef,
+                "max_grad_norm": max_grad_norm,
+                "use_sde": use_sde,
+                "sde_sample_freq": sde_sample_freq,
+                "clip_range": clip_range,
+                "clip_range_vf": clip_range_vf,
+                "normalize_advantage": normalize_advantage,
+                "target_kl": target_kl,
+                "constraint_alpha": constraint_alpha,
+                "lr_constraint_lambda": lr_constraint_lambda,
+                "constant_constraint_lambda": constant_constraint_lambda,
+            }
+
+            wandb.init(
+                project="SafeRL",
+                entity=None,
+                sync_tensorboard=True,
+                monitor_gym=True,
+                save_code=True,
+                config=logger_config,
+            )
 
         super().__init__(
             policy,
@@ -184,36 +216,6 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
 
         if _init_setup_model:
             self._setup_model()
-
-        logger_config = {
-            "learning_rate": learning_rate,
-            "n_steps": n_steps,
-            "batch_size": batch_size,
-            "n_epochs": n_epochs,
-            "gamma": gamma,
-            "gae_lambda": gae_lambda,
-            "ent_coef": ent_coef,
-            "vf_coef": vf_coef,
-            "max_grad_norm": max_grad_norm,
-            "use_sde": use_sde,
-            "sde_sample_freq": sde_sample_freq,
-            "clip_range": clip_range,
-            "clip_range_vf": clip_range_vf,
-            "normalize_advantage": normalize_advantage,
-            "target_kl": target_kl,
-            "constraint_alpha": constraint_alpha,
-            "lr_constraint_lambda": lr_constraint_lambda,
-            "constant_constraint_lambda": constant_constraint_lambda,
-        }
-
-        wandb.init(
-            project="SafeRL",
-            entity=None,
-            sync_tensorboard=True,
-            monitor_gym=True,
-            save_code=True,
-            config=logger_config,
-        )
 
     def _setup_model(self) -> None:
         super()._setup_model()
