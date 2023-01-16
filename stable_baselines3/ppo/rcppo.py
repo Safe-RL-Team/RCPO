@@ -105,7 +105,7 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
         sde_sample_freq: int = -1,
         target_kl: Optional[float] = None,
         tensorboard_log: Optional[str] = None,
-        use_wandb: bool = True,
+        use_wandb: bool = False,
         policy_kwargs: Optional[Dict[str, Any]] = None,
         verbose: int = 0,
         seed: Optional[int] = None,
@@ -204,7 +204,10 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
 
         self.C = 0
         # Upper bound for constraint
-        assert constraint_alpha is not None, "constraint_alpha must be specified"
+        if not constraint_alpha:
+            warnings.warn(
+                "constraint_alpha is not set! If used for evaluation, this is fine."
+            )
         self.constraint_alpha = constraint_alpha
         # assert (
         #     lr_constraint_lambda < learning_rate
@@ -411,12 +414,21 @@ class RCPPO(RewardConstrainedOnPolicyAlgorithm):
             d_constraint_lambda = self.C - self.constraint_alpha
 
             # lr_constraint_lambda decay when constraint is close to constraint_alpha
-            if np.abs(d_constraint_lambda) < self.lr_constraint_lambda_decay_threshold:
-                self.lr_constraint_lambda *= self.lr_constraint_lambda_decay
-                self.lr_constraint_lambda_decay_threshold *= (
-                    self.lr_constraint_lambda_decay
-                )
-                print(f"lr_constraint_lambda decayed to {self.lr_constraint_lambda}")
+            if (
+                self.lr_constraint_lambda_decay_threshold
+                and self.lr_constraint_lambda_decay
+            ):
+                if (
+                    np.abs(d_constraint_lambda)
+                    < self.lr_constraint_lambda_decay_threshold
+                ):
+                    self.lr_constraint_lambda *= self.lr_constraint_lambda_decay
+                    self.lr_constraint_lambda_decay_threshold *= (
+                        self.lr_constraint_lambda_decay
+                    )
+                    print(
+                        f"lr_constraint_lambda decayed to {self.lr_constraint_lambda}"
+                    )
 
             # update constraint lambda in rollout buffer
             # self.rollout_buffer.constraint_lambda += lr_constraint_lambda * d_constraint_lambda
