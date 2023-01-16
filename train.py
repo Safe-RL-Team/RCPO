@@ -90,18 +90,6 @@ def main():
 
         model.save(path=f"runs/{model_name}")
 
-    print("evaluating model")
-
-    obs = env.reset()
-    for _ in range(5000):
-        action, _states = model.predict(obs, deterministic=True)
-        obs, reward, done, info = env.step(action)
-        env.render()
-        if done:
-            obs = env.reset()
-
-    env.close()
-
 
 if __name__ == "__main__":
     main()
