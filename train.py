@@ -41,31 +41,6 @@ def main():
     env = gym.make("HalfCheetah-v3")
     save_model = True
 
-    ppo_params = OrderedDict(
-        [
-            ("batch_size", 64),
-            ("clip_range", 0.1),
-            ("ent_coef", 0.000401762),
-            ("gae_lambda", 0.92),
-            ("gamma", 0.98),
-            ("learning_rate", 3e-4),
-            ("max_grad_norm", 0.8),
-            ("n_epochs", 20),
-            ("n_steps", 512),
-            ("policy", "MlpPolicy"),
-            (
-                "policy_kwargs",
-                dict(
-                    log_std_init=-2,
-                    ortho_init=False,
-                    activation_fn=torch.nn.ReLU,
-                    net_arch=[dict(pi=[256, 256], vf=[256, 256])],
-                ),
-            ),
-            ("vf_coef", 0.58096),
-        ]
-    )
-
     model = RCPPO(
         env=env,
         verbose=1,
@@ -75,7 +50,7 @@ def main():
         lr_constraint_lambda=5e-7,
         use_wandb=False,
         # tensorboard_log="/home/tuananhroman/tu/stable-baselines3/tensorboard",
-        **ppo_params,
+        **half_cheetah_params,
     )
 
     model.learn(total_timesteps=100_000)
