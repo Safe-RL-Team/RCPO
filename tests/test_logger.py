@@ -11,8 +11,8 @@ import torch as th
 from matplotlib import pyplot as plt
 from pandas.errors import EmptyDataError
 
-from stable_baselines3 import A2C, DQN
-from stable_baselines3.common.logger import (
+from safe_rl_stable_baselines3 import A2C, DQN
+from safe_rl_stable_baselines3.common.logger import (
     DEBUG,
     INFO,
     CSVOutputFormat,

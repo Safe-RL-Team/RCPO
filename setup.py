@@ -2,7 +2,7 @@ import os
 
 from setuptools import find_packages, setup
 
-with open(os.path.join("stable_baselines3", "version.txt")) as file_handler:
+with open(os.path.join("safe_rl_stable_baselines3", "version.txt")) as file_handler:
     __version__ = file_handler.read().strip()
 
 
@@ -69,8 +69,12 @@ model = PPO("MlpPolicy", "CartPole-v1").learn(10_000)
 
 
 setup(
-    name="stable_baselines3",
-    packages=[package for package in find_packages() if package.startswith("stable_baselines3")],
+    name="safe_rl_stable_baselines3",
+    packages=[
+        package
+        for package in find_packages()
+        if package.startswith("safe_rl_stable_baselines3")
+    ],
     package_data={"stable_baselines3": ["py.typed", "version.txt"]},
     install_requires=[
         "gym==0.21",  # Fixed version due to breaking changes in 0.22

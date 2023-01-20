@@ -1,7 +1,7 @@
 import torch
 import gym
 
-from stable_baselines3 import RCPPO
+from safe_rl_stable_baselines3 import RCPPO
 
 
 def main():

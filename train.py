@@ -3,7 +3,7 @@ import gym
 import torch
 from collections import OrderedDict
 
-from stable_baselines3 import PPO, RCPPO
+from safe_rl_stable_baselines3 import PPO, RCPPO
 from hyperparameters import half_cheetah_params
 
 ### Create python env

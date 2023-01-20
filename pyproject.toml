@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "stable-baselines3"
+name = "safe_rl_stable-baselines3"
 version = "0.1.0"
 description = ""
 authors = ["sudo-Boris <boris.meinardus00@gmail.com>"]
@@ -13,6 +13,9 @@ Box2D = "^2.3.10"
 mujoco-py = "<2.2,>=2.1"
 wandb = "^0.13.7"
 tensorboard = "^2.11.0"
+torch = "^1.13.1"
+pandas = "^1.5.2"
+matplotlib = "^3.6.3"
 
 [tool.poetry.dev-dependencies]
 

@@ -2,10 +2,10 @@ import os
 
 import pytest
 
-from stable_baselines3 import A2C, PPO, SAC, TD3
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.logger import HParam
-from stable_baselines3.common.utils import get_latest_run_id
+from safe_rl_stable_baselines3 import A2C, PPO, SAC, TD3
+from safe_rl_stable_baselines3.common.callbacks import BaseCallback
+from safe_rl_stable_baselines3.common.logger import HParam
+from safe_rl_stable_baselines3.common.utils import get_latest_run_id
 
 MODEL_DICT = {
     "a2c": (A2C, "CartPole-v1"),

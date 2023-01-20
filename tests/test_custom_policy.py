@@ -1,8 +1,8 @@
 import pytest
 import torch as th
 
-from stable_baselines3 import A2C, DQN, PPO, SAC, TD3
-from stable_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
+from safe_rl_stable_baselines3 import A2C, DQN, PPO, SAC, TD3
+from safe_rl_stable_baselines3.common.sb2_compat.rmsprop_tf_like import RMSpropTFLike
 
 
 @pytest.mark.parametrize(

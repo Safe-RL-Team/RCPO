@@ -3,9 +3,9 @@ import numpy as np
 import pytest
 import torch as th
 
-from stable_baselines3 import A2C, PPO, SAC
-from stable_baselines3.common.callbacks import BaseCallback
-from stable_baselines3.common.policies import ActorCriticPolicy
+from safe_rl_stable_baselines3 import A2C, PPO, SAC
+from safe_rl_stable_baselines3.common.callbacks import BaseCallback
+from safe_rl_stable_baselines3.common.policies import ActorCriticPolicy
 
 
 class CustomEnv(gym.Env):

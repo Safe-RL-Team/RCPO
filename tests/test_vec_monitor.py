@@ -7,11 +7,11 @@ import gym
 import pandas
 import pytest
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.envs.bit_flipping_env import BitFlippingEnv
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.monitor import Monitor, get_monitor_files, load_results
-from stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecNormalize
+from safe_rl_stable_baselines3 import PPO
+from safe_rl_stable_baselines3.common.envs.bit_flipping_env import BitFlippingEnv
+from safe_rl_stable_baselines3.common.evaluation import evaluate_policy
+from safe_rl_stable_baselines3.common.monitor import Monitor, get_monitor_files, load_results
+from safe_rl_stable_baselines3.common.vec_env import DummyVecEnv, VecMonitor, VecNormalize
 
 
 def test_vec_monitor(tmp_path):

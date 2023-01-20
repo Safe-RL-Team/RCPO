@@ -1,8 +1,8 @@
 import numpy as np
 from gym import spaces
 
-from stable_baselines3 import PPO
-from stable_baselines3.common.vec_env import VecExtractDictObs, VecMonitor
+from safe_rl_stable_baselines3 import PPO
+from safe_rl_stable_baselines3.common.vec_env import VecExtractDictObs, VecMonitor
 
 
 class DictObsVecEnv:

@@ -5,10 +5,10 @@ import numpy as np
 import pytest
 from gym import spaces
 
-from stable_baselines3 import SAC, TD3, HerReplayBuffer
-from stable_baselines3.common.monitor import Monitor
-from stable_baselines3.common.running_mean_std import RunningMeanStd
-from stable_baselines3.common.vec_env import (
+from safe_rl_stable_baselines3 import SAC, TD3, HerReplayBuffer
+from safe_rl_stable_baselines3.common.monitor import Monitor
+from safe_rl_stable_baselines3.common.running_mean_std import RunningMeanStd
+from safe_rl_stable_baselines3.common.vec_env import (
     DummyVecEnv,
     VecFrameStack,
     VecNormalize,

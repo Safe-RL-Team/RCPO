@@ -2,9 +2,9 @@ import gym
 import numpy as np
 import pytest
 
-from stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.evaluation import evaluate_policy
+from safe_rl_stable_baselines3 import A2C, DDPG, DQN, PPO, SAC, TD3
+from safe_rl_stable_baselines3.common.env_util import make_vec_env
+from safe_rl_stable_baselines3.common.evaluation import evaluate_policy
 
 
 class DummyMultiDiscreteSpace(gym.Env):

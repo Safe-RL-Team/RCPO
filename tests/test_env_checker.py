@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from gym.spaces import Box, Dict, Discrete
 
-from stable_baselines3.common.env_checker import check_env
+from safe_rl_stable_baselines3.common.env_checker import check_env
 
 
 class ActionDictTestEnv(gym.Env):

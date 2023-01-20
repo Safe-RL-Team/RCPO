@@ -4,11 +4,11 @@ import pytest
 import torch as th
 from gym import spaces
 
-from stable_baselines3.common.buffers import DictReplayBuffer, DictRolloutBuffer, ReplayBuffer, RolloutBuffer
-from stable_baselines3.common.env_util import make_vec_env
-from stable_baselines3.common.type_aliases import DictReplayBufferSamples, ReplayBufferSamples
-from stable_baselines3.common.utils import get_device
-from stable_baselines3.common.vec_env import VecNormalize
+from safe_rl_stable_baselines3.common.buffers import DictReplayBuffer, DictRolloutBuffer, ReplayBuffer, RolloutBuffer
+from safe_rl_stable_baselines3.common.env_util import make_vec_env
+from safe_rl_stable_baselines3.common.type_aliases import DictReplayBufferSamples, ReplayBufferSamples
+from safe_rl_stable_baselines3.common.utils import get_device
+from safe_rl_stable_baselines3.common.vec_env import VecNormalize
 
 
 class DummyEnv(gym.Env):
